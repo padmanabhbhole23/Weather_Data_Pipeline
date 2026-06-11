@@ -1,0 +1,437 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Weather Data Pipeline</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: 'Segoe UI', system-ui, sans-serif;
+    background: #0f172a;
+    color: #e2e8f0;
+    min-height: 100vh;
+  }
+
+  /* HEADER */
+  header {
+    background: linear-gradient(135deg, #1e40af 0%, #0f172a 100%);
+    padding: 1.5rem 2rem;
+    border-bottom: 1px solid #1e3a5f;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 1rem;
+  }
+  header h1 {
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: #fff;
+    display: flex;
+    align-items: center;
+    gap: .5rem;
+  }
+  .refresh-btn {
+    background: #1e40af;
+    color: #fff;
+    border: 1px solid #3b82f6;
+    padding: .5rem 1.2rem;
+    border-radius: 8px;
+    cursor: pointer;
+    font-size: .9rem;
+    transition: background .2s;
+  }
+  .refresh-btn:hover { background: #2563eb; }
+
+  /* MAIN LAYOUT */
+  .container { max-width: 1300px; margin: 0 auto; padding: 2rem 1.5rem; }
+
+  /* STATS ROW */
+  .stats-row {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+    gap: 1rem;
+    margin-bottom: 2rem;
+  }
+  .stat-card {
+    background: #1e293b;
+    border: 1px solid #334155;
+    border-radius: 12px;
+    padding: 1.2rem;
+    text-align: center;
+  }
+  .stat-card .num {
+    font-size: 2rem;
+    font-weight: 700;
+    color: #60a5fa;
+  }
+  .stat-card .label {
+    font-size: .8rem;
+    color: #94a3b8;
+    margin-top: .3rem;
+    text-transform: uppercase;
+    letter-spacing: .05em;
+  }
+
+  /* ALERTS */
+  .alerts-section { margin-bottom: 2rem; }
+  .alerts-section h2 { font-size: 1.1rem; color: #f8fafc; margin-bottom: .8rem; display: flex; align-items: center; gap: .4rem; }
+  .alert-badge {
+    background: #7f1d1d;
+    border: 1px solid #dc2626;
+    color: #fca5a5;
+    border-radius: 8px;
+    padding: .6rem 1rem;
+    font-size: .875rem;
+    margin-bottom: .4rem;
+    display: flex;
+    align-items: center;
+    gap: .5rem;
+  }
+  .alert-badge.humidity { background: #1e3a5f; border-color: #3b82f6; color: #93c5fd; }
+  .no-alerts {
+    color: #4ade80;
+    background: #052e16;
+    border: 1px solid #166534;
+    border-radius: 8px;
+    padding: .6rem 1rem;
+    font-size: .875rem;
+    display: inline-flex;
+    align-items: center;
+    gap: .4rem;
+  }
+
+  /* SEARCH */
+  .search-section {
+    background: #1e293b;
+    border: 1px solid #334155;
+    border-radius: 14px;
+    padding: 1.5rem;
+    margin-bottom: 2rem;
+  }
+  .search-section h2 { font-size: 1.1rem; margin-bottom: 1rem; color: #f8fafc; }
+  .search-row { display: flex; gap: .75rem; flex-wrap: wrap; }
+  .search-row input {
+    flex: 1;
+    min-width: 200px;
+    background: #0f172a;
+    border: 1px solid #475569;
+    color: #e2e8f0;
+    padding: .65rem 1rem;
+    border-radius: 8px;
+    font-size: .95rem;
+    outline: none;
+    transition: border-color .2s;
+  }
+  .search-row input:focus { border-color: #3b82f6; }
+  .search-row input::placeholder { color: #64748b; }
+  .search-btn {
+    background: #2563eb;
+    color: #fff;
+    border: none;
+    padding: .65rem 1.5rem;
+    border-radius: 8px;
+    cursor: pointer;
+    font-size: .95rem;
+    font-weight: 600;
+    transition: background .2s;
+    white-space: nowrap;
+  }
+  .search-btn:hover { background: #1d4ed8; }
+  .search-btn:disabled { background: #475569; cursor: not-allowed; }
+
+  /* SEARCH RESULT */
+  #search-result { margin-top: 1rem; }
+  .result-card {
+    background: #0f172a;
+    border: 1px solid #3b82f6;
+    border-radius: 12px;
+    padding: 1.2rem 1.5rem;
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
+    gap: 1rem;
+    animation: fadeIn .3s ease;
+  }
+  @keyframes fadeIn { from { opacity:0; transform: translateY(-8px); } to { opacity:1; transform: none; } }
+  .result-card .rc-city {
+    grid-column: 1 / -1;
+    font-size: 1.2rem;
+    font-weight: 700;
+    color: #60a5fa;
+    margin-bottom: .3rem;
+  }
+  .result-card .rc-item label { font-size: .75rem; color: #94a3b8; text-transform: uppercase; letter-spacing: .05em; display: block; margin-bottom: .2rem; }
+  .result-card .rc-item .val { font-size: 1.1rem; font-weight: 600; color: #f1f5f9; }
+  .result-alert { background: #450a0a; border: 1px solid #dc2626; color: #fca5a5; border-radius: 8px; padding: .5rem 1rem; font-size: .85rem; margin-top: .5rem; }
+  .error-msg { color: #f87171; background: #450a0a; border: 1px solid #dc2626; border-radius: 8px; padding: .7rem 1rem; font-size: .9rem; }
+  .loading-msg { color: #94a3b8; font-size: .9rem; padding: .5rem 0; }
+
+  /* WEATHER CARDS GRID */
+  .section-title {
+    font-size: 1.1rem;
+    color: #f8fafc;
+    margin-bottom: 1rem;
+    display: flex;
+    align-items: center;
+    gap: .4rem;
+  }
+  .cards-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+    gap: 1rem;
+    margin-bottom: 2rem;
+  }
+  .weather-card {
+    background: #1e293b;
+    border: 1px solid #334155;
+    border-radius: 14px;
+    padding: 1.2rem;
+    transition: border-color .2s, transform .2s;
+    position: relative;
+    overflow: hidden;
+  }
+  .weather-card:hover { border-color: #3b82f6; transform: translateY(-2px); }
+  .weather-card.has-alert { border-color: #dc2626; }
+  .weather-card .city-name { font-size: 1.1rem; font-weight: 700; color: #f1f5f9; margin-bottom: .8rem; }
+  .weather-card .temp { font-size: 2.2rem; font-weight: 700; color: #fbbf24; line-height: 1; }
+  .weather-card .temp span { font-size: 1rem; color: #94a3b8; font-weight: 400; }
+  .weather-card .condition { font-size: .85rem; color: #94a3b8; margin: .4rem 0 .8rem; text-transform: capitalize; }
+  .weather-card .meta { display: grid; grid-template-columns: 1fr 1fr; gap: .4rem; }
+  .weather-card .meta-item { font-size: .8rem; }
+  .weather-card .meta-item label { color: #64748b; display: block; font-size: .72rem; }
+  .weather-card .meta-item .v { color: #cbd5e1; font-weight: 500; }
+  .weather-card .ts { font-size: .72rem; color: #475569; margin-top: .8rem; border-top: 1px solid #334155; padding-top: .6rem; }
+  .alert-dot { position: absolute; top: .8rem; right: .8rem; width: 8px; height: 8px; background: #dc2626; border-radius: 50%; }
+
+  /* HISTORY TABLE */
+  .history-section { margin-bottom: 2rem; }
+  .table-wrap { overflow-x: auto; border-radius: 12px; border: 1px solid #334155; }
+  table { width: 100%; border-collapse: collapse; font-size: .875rem; }
+  thead { background: #0f172a; }
+  thead th { padding: .75rem 1rem; text-align: left; color: #94a3b8; font-weight: 600; font-size: .8rem; text-transform: uppercase; letter-spacing: .05em; white-space: nowrap; }
+  tbody tr { border-top: 1px solid #1e293b; transition: background .15s; }
+  tbody tr:hover { background: #1e293b; }
+  tbody td { padding: .7rem 1rem; color: #cbd5e1; }
+  .temp-hot { color: #fbbf24; font-weight: 600; }
+  .temp-ok { color: #4ade80; }
+  .hum-high { color: #60a5fa; font-weight: 600; }
+
+  /* TOAST */
+  #toast {
+    position: fixed; bottom: 1.5rem; right: 1.5rem;
+    background: #1e293b; border: 1px solid #334155;
+    color: #e2e8f0; padding: .8rem 1.2rem; border-radius: 10px;
+    font-size: .875rem; opacity: 0; transition: opacity .3s;
+    z-index: 999; max-width: 320px;
+  }
+  #toast.show { opacity: 1; }
+  #toast.success { border-color: #166534; color: #4ade80; }
+  #toast.error { border-color: #dc2626; color: #f87171; }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>🌦 Weather Data Pipeline</h1>
+  <button class="refresh-btn" onclick="refreshAll()">🔄 Refresh All Cities</button>
+</header>
+
+<div class="container">
+
+  <!-- STATS -->
+  <div class="stats-row">
+    <div class="stat-card">
+      <div class="num">{{ total_records }}</div>
+      <div class="label">Total Records</div>
+    </div>
+    <div class="stat-card">
+      <div class="num">{{ total_cities }}</div>
+      <div class="label">Cities Tracked</div>
+    </div>
+    <div class="stat-card">
+      <div class="num">{{ latest | length }}</div>
+      <div class="label">Active Cities</div>
+    </div>
+    <div class="stat-card">
+      <div class="num">{{ alerts | length }}</div>
+      <div class="label">Active Alerts</div>
+    </div>
+  </div>
+
+  <!-- ALERTS -->
+  <div class="alerts-section">
+    <h2>⚠️ Alerts</h2>
+    {% if alerts %}
+      {% for a in alerts %}
+        <div class="alert-badge {% if a.type == 'humidity' %}humidity{% endif %}">
+          {% if a.type == 'temperature' %}🌡️{% else %}💧{% endif %}
+          <strong>{{ a.city }}</strong>: {{ a.msg }}
+        </div>
+      {% endfor %}
+    {% else %}
+      <div class="no-alerts">✅ No alerts — all readings within normal range</div>
+    {% endif %}
+  </div>
+
+  <!-- SEARCH -->
+  <div class="search-section">
+    <h2>🔍 Search Any City</h2>
+    <div class="search-row">
+      <input type="text" id="city-input" placeholder="Enter city name (e.g. Pune, Hyderabad, IN or London, GB)" />
+      <button class="search-btn" id="search-btn" onclick="fetchCity()">Fetch Weather</button>
+    </div>
+    <div id="search-result"></div>
+  </div>
+
+  <!-- CURRENT CONDITIONS -->
+  <div class="section-title">🌤 Current Conditions</div>
+  <div class="cards-grid">
+    {% for row in latest %}
+    {% set city, temp, hum, cond, wind, pres, rain, ts = row %}
+    {% set is_alert = (temp is not none and temp > temp_threshold) or (hum is not none and hum > hum_threshold) %}
+    <div class="weather-card {% if is_alert %}has-alert{% endif %}">
+      {% if is_alert %}<div class="alert-dot"></div>{% endif %}
+      <div class="city-name">📍 {{ city }}</div>
+      <div class="temp">{{ "%.1f"|format(temp) if temp else "—" }}<span> °C</span></div>
+      <div class="condition">{{ cond or "—" }}</div>
+      <div class="meta">
+        <div class="meta-item"><label>Humidity</label><span class="v {% if hum and hum > hum_threshold %}hum-high{% endif %}">{{ hum }}%</span></div>
+        <div class="meta-item"><label>Wind</label><span class="v">{{ "%.1f"|format(wind) if wind else "—" }} m/s</span></div>
+        <div class="meta-item"><label>Pressure</label><span class="v">{{ "%.0f"|format(pres) if pres else "—" }} hPa</span></div>
+        <div class="meta-item"><label>Rain (1h)</label><span class="v">{{ "%.1f"|format(rain) if rain else "0" }} mm</span></div>
+      </div>
+      <div class="ts">🕒 {{ ts[:19].replace("T", " ") if ts else "—" }} UTC</div>
+    </div>
+    {% endfor %}
+    {% if not latest %}
+    <p style="color:#64748b; grid-column:1/-1;">No data yet. Click "Refresh All Cities" to fetch weather.</p>
+    {% endif %}
+  </div>
+
+  <!-- HISTORY TABLE -->
+  <div class="history-section">
+    <div class="section-title">📋 Recent Records (last 20)</div>
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>#</th>
+            <th>City</th>
+            <th>Temp (°C)</th>
+            <th>Humidity (%)</th>
+            <th>Condition</th>
+            <th>Timestamp (UTC)</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for row in history %}
+          {% set city, temp, hum, cond, ts = row %}
+          <tr>
+            <td style="color:#475569;">{{ loop.index }}</td>
+            <td style="font-weight:600;">{{ city }}</td>
+            <td class="{% if temp and temp > temp_threshold %}temp-hot{% else %}temp-ok{% endif %}">
+              {{ "%.2f"|format(temp) if temp else "—" }}
+            </td>
+            <td class="{% if hum and hum > hum_threshold %}hum-high{% endif %}">{{ hum or "—" }}</td>
+            <td style="text-transform:capitalize; color:#94a3b8;">{{ cond or "—" }}</td>
+            <td style="font-size:.8rem; color:#475569;">{{ ts[:19].replace("T", " ") if ts else "—" }}</td>
+          </tr>
+          {% endfor %}
+          {% if not history %}
+          <tr><td colspan="6" style="text-align:center; color:#475569; padding:1.5rem;">No records yet.</td></tr>
+          {% endif %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+</div>
+
+<div id="toast"></div>
+
+<script>
+  function showToast(msg, type = 'success') {
+    const t = document.getElementById('toast');
+    t.textContent = msg;
+    t.className = 'show ' + type;
+    setTimeout(() => t.className = '', 3000);
+  }
+
+  async function refreshAll() {
+    showToast('Refreshing all cities...', '');
+    try {
+      const r = await fetch('/api/refresh', { method: 'POST' });
+      const d = await r.json();
+      if (d.success) {
+        showToast(`✅ Updated! Processed: ${d.result.processed}, Failed: ${d.result.failed}`, 'success');
+        setTimeout(() => location.reload(), 1500);
+      } else {
+        showToast('❌ Error: ' + d.error, 'error');
+      }
+    } catch(e) {
+      showToast('❌ Network error', 'error');
+    }
+  }
+
+  async function fetchCity() {
+    const input = document.getElementById('city-input');
+    const city = input.value.trim();
+    if (!city) { showToast('Please enter a city name', 'error'); return; }
+
+    const btn = document.getElementById('search-btn');
+    const resultDiv = document.getElementById('search-result');
+    btn.disabled = true;
+    btn.textContent = 'Fetching...';
+    resultDiv.innerHTML = '<p class="loading-msg">⏳ Fetching live weather data...</p>';
+
+    try {
+      const r = await fetch('/api/fetch-city', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ city })
+      });
+      const d = await r.json();
+
+      if (d.success) {
+        const ts = d.timestamp ? d.timestamp.substring(0, 19).replace('T', ' ') : '—';
+        const alertsHtml = d.alerts.length
+          ? d.alerts.map(a => `<div class="result-alert">⚠️ ${a}</div>`).join('')
+          : '';
+        resultDiv.innerHTML = `
+          <div class="result-card">
+            <div class="rc-city">📍 ${d.city}</div>
+            <div class="rc-item"><label>Temperature</label><span class="val">${d.temperature !== null ? d.temperature.toFixed(1) + ' °C' : '—'}</span></div>
+            <div class="rc-item"><label>Humidity</label><span class="val">${d.humidity !== null ? d.humidity + '%' : '—'}</span></div>
+            <div class="rc-item"><label>Condition</label><span class="val" style="text-transform:capitalize">${d.condition || '—'}</span></div>
+            <div class="rc-item"><label>Wind Speed</label><span class="val">${d.wind_speed !== null ? d.wind_speed + ' m/s' : '—'}</span></div>
+            <div class="rc-item"><label>Pressure</label><span class="val">${d.pressure !== null ? d.pressure + ' hPa' : '—'}</span></div>
+            <div class="rc-item"><label>Rain (1h)</label><span class="val">${d.rain_1h !== null ? d.rain_1h + ' mm' : '0 mm'}</span></div>
+            <div class="rc-item" style="grid-column:1/-1"><label>Recorded at (UTC)</label><span class="val" style="font-size:.85rem;color:#94a3b8">${ts}</span></div>
+          </div>
+          ${alertsHtml}
+          <p style="font-size:.8rem;color:#4ade80;margin-top:.5rem">✅ City saved to database. Refresh page to see it in the dashboard.</p>
+        `;
+        showToast(`✅ Weather fetched for ${d.city}!`, 'success');
+      } else {
+        resultDiv.innerHTML = `<div class="error-msg">❌ ${d.error}</div>`;
+        showToast('❌ ' + d.error, 'error');
+      }
+    } catch(e) {
+      resultDiv.innerHTML = `<div class="error-msg">❌ Network error. Is Flask running?</div>`;
+      showToast('❌ Network error', 'error');
+    } finally {
+      btn.disabled = false;
+      btn.textContent = 'Fetch Weather';
+    }
+  }
+
+  // Allow Enter key in search input
+  document.getElementById('city-input').addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') fetchCity();
+  });
+</script>
+
+</body>
+</html>

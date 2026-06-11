@@ -54,6 +54,44 @@ weather_pipeline/
 
 
 Steps to run:
+python -m venv venv
+venv\Scripts\activate
 
 1. pip install -r requirements.txt
 
+Change: OPENWEATHER_API_KEY=your_api_key_here
+python -m src.main
+python -m src.scheduler
+
+
+---
+
+# 🧾 2️⃣ Database Schema (`database/schema.sql`)
+
+```sql
+CREATE TABLE cities (
+    city_id INTEGER PRIMARY KEY,
+    city_name TEXT,
+    country TEXT,
+    latitude REAL,
+    longitude REAL
+);
+
+CREATE TABLE weather_conditions (
+    condition_id INTEGER PRIMARY KEY,
+    condition_text TEXT UNIQUE
+);
+
+CREATE TABLE weather_data (
+    record_id INTEGER PRIMARY KEY,
+    city_id INTEGER,
+    condition_id INTEGER,
+    timestamp_utc TEXT,
+    temperature_c REAL,
+    humidity INTEGER,
+    pressure_hpa REAL,
+    wind_speed_mps REAL,
+    rain_1h_mm REAL,
+    FOREIGN KEY(city_id) REFERENCES cities(city_id),
+    FOREIGN KEY(condition_id) REFERENCES weather_conditions(condition_id)
+);
